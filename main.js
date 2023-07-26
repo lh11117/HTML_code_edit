@@ -1,9 +1,16 @@
 "ui";
+
+//这是最后一个测试版。
+
 importClass(android.view.KeyEvent);
 importClass(android.webkit.WebView);
 importClass(android.webkit.WebChromeClient);
 importClass(android.webkit.WebResourceResponse);
 importClass(android.webkit.WebViewClient);
+
+importClass(android.widget.EditText);
+importClass(android.text.InputType);
+
 
 var info_size = 35;
 var pack_size = 2;
@@ -17,6 +24,8 @@ var seted1 = false,
 var storage = storages.create("html_code_edit");
 ui.statusBarColor(color);
 
+var scroll_to_where = 0;
+
 function mainui(html, css, js, pjname) {
     ui.layout(
         <frame bg="{{color}}">
@@ -25,38 +34,39 @@ function mainui(html, css, js, pjname) {
                     <text text="" id="info_text" color="#ffffff" h="{{info_size}}" textSize="20sp" gravity="center"/>
                 </linear>
             </vertical>
-            <ScrollView margin="8 {{info_size}}">
+            <scroll margin="8 {{info_size}}" id="scroll">
                 <vertical bg="#ffffff" padding="8">
                     <linear>
                         <text text="项目名称：" id="pjname_text" textSize="20sp"/>
                         <input text="pj" id="pjname" w="*" singleLine="true"/>
                     </linear>
                     <linear>
-                        <text text="HTML代码区：" textSize="20sp"/>
+                        <text text="HTML代码区：" textSize="20sp" color="{{color}}"/>
                     </linear>
                     <linear>
-                        <input hint="HTML" w="*" id="htmlcode"/>
+                        <EditText hint="HTML" w="*" id="htmlcode" layout_width="match_parent"/>
                     </linear>
                     <linear>
-                        <text text="CSS代码区：" textSize="20sp"/>
+                        <text text="CSS代码区：" textSize="20sp" color="{{color}}"/>
                     </linear>
                     <linear>
-                        <input hint="CSS" w="*" id="csscode"/>
+                        <EditText hint="CSS" w="*" id="csscode"/>
                     </linear>
                     <linear>
-                        <text text="JavaScript代码区：" textSize="20sp"/>
+                        <text text="JavaScript代码区：" textSize="20sp" color="{{color}}"/>
                     </linear>
                     <linear>
-                        <input hint="JavaScript" w="*" id="jscode"/>
+                        <EditText hint="JavaScript" w="*" id="jscode"/>
                     </linear>
                 </vertical>
-            </ScrollView>
+            </scroll>
             <vertical gravity="top" margin="8 0">
                 <linear bg="{{color}}" gravity="right">
                     <img text="运行代码" bg="?selectableItemBackground" h="35" tint="#ffffff" src="@drawable/ic_play_arrow_black_48dp" id="runcode"/>
                     <img text="保存代码" bg="?selectableItemBackground" h="35" tint="#ffffff" src="@drawable/ic_save_black_48dp" id="savecode"/>
                     <img text="新建代码" bg="?selectableItemBackground" h="35" tint="#ffffff" src="@drawable/ic_note_add_black_48dp" id="newcode"/>
                     <img text="打开代码" bg="?selectableItemBackground" h="35" tint="#ffffff" src="@drawable/ic_folder_open_black_48dp" id="opencode"/>
+                    <img text="字体" bg="?selectableItemBackground" h="35" tint="#ffffff" src="@drawable/ic_text_fields_black_48dp" id="ttf_set"/>
                     <img text="关于" h="35" bg="?selectableItemBackground" tint="#ffffff" src="@drawable/ic_help_outline_black_48dp" id="about"/>
                 </linear>
             </vertical>
@@ -67,6 +77,26 @@ function mainui(html, css, js, pjname) {
             </vertical>
         </frame>
     );
+
+    function setFont_(i) {
+        var tf;
+        switch (i) {
+            case 0:
+                tf = android.graphics.Typeface.createFromFile(java.io.File(files.path("./consolas.ttf")));
+                break;
+            case 1:
+                tf = android.graphics.Typeface.createFromFile(java.io.File(files.path("./intel-one-mono.ttf")));
+                break;
+        }
+        if (tf == undefined) {
+            return;
+        }
+        ui.htmlcode.setTypeface(tf);
+        ui.jscode.setTypeface(tf);
+        ui.csscode.setTypeface(tf);
+        fontId = i;
+        storage.put("fontId", i);
+    }
     ui.info.visibility = 8;
     ui.htmlcode.setText(html);
     ui.csscode.setText(css);
@@ -74,8 +104,26 @@ function mainui(html, css, js, pjname) {
     ui.pjname.setText(pjname);
     ui.pjname.setEnabled(!not_enabled);
     pj = pjname;
+    //禁用底部横线
+    ui.htmlcode.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+    ui.csscode.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+    ui.jscode.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+    ui.pjname.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+    //禁用自动换行
+    ui.htmlcode.setHorizontallyScrolling(true);
+    ui.jscode.setHorizontallyScrolling(true);
+    ui.csscode.setHorizontallyScrolling(true);
+    //设置字体
+    var fontId = storage.get("fontId");
+    if (fontId == null) {
+        fontId = 0;
+    }
+    setFont_(fontId);
+    //添加事件
     ui.runcode.on("click", () => {
         if (isValidFolderName(ui.pjname.getText())) {
+            scroll_to_where = ui.scroll.getScrollY();
+            log(scroll_to_where.toString());
             running = true;
             savecode(ui);
             not_enabled = true;
@@ -143,6 +191,10 @@ function mainui(html, css, js, pjname) {
             open_pj();
         }
     });
+    ui.ttf_set.click(function() {
+        var ttf_list = ["Consolas", "Inter One Mono"];
+        dialogs.singleChoice("更改字体", ttf_list, fontId, setFont_)
+    });
     if (!seted1) {
         seted1 = true;
         ui.emitter.on("back_pressed", (event) => {
@@ -174,6 +226,7 @@ function mainui(html, css, js, pjname) {
             }
         }
     });
+    ui.scroll.setScrollY(scroll_to_where);
     return text;
 }
 
@@ -368,11 +421,11 @@ if (open_pj_name == null) {
 
 show_info("欢迎使用");
 
-function view_html(h, c, j) {
+function view_html(h, c, j) { //h：html，c：css，j：JavaScript
     var code = "";
     //code = '<meta name="viewport" content="minimum-scale=1.0,maximum-scale=1.0,user-scalable=no,initial-scale=1.0" /><script>document.documentElement.style.overflow=\'hidden\'; document.body.style.overflow=\'hidden\';</script><style>html{overflow-x:hidden;/* 隐藏滚动条 */}</style>';
     code = '<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport">';
-    var s = code + h + '<style>' + c + '</style><script>' + j + '</script>';
+    //var s = code + h + '<style>' + c + '</style><script>' + j + '</script>';
     p = path + pj + "/run_temp.html";
     f = open(p, "w")
     f.writeline(code);
@@ -380,7 +433,7 @@ function view_html(h, c, j) {
     f.writeline("<style>" + c + "</style>");
     f.writeline("<script>" + j + "</script>");
     f.close()
-    runui();
+    runui(); //启动运行界面
     ui.run_view.loadUrl("file://" + p);
 }
 
@@ -502,12 +555,13 @@ function runui() {
                 return;
             }
             event.consumed = true;
+            if (ui.ui_console_box.visibility == 0) {
+                show_console_func();
+                return;
+            }
             if (ui.run_view.canGoBack()) {
                 ui.run_view.goBack()
                 return;
-            }
-            if (ui.ui_console_box.visibility == 0) {
-                show_console_func();
             } else {
                 running = false;
                 mainui(htmlcode, csscode, jscode, pj);
